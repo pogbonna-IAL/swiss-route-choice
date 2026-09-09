@@ -3,6 +3,7 @@ suppressPackageStartupMessages({
   source(here::here("R", "00_setup.R"))
   source(here::here("R", "lc_helpers.R"))
   source(here::here("R", "model_helpers.R"))
+  source(here::here("R", "orchestrate.R"))
 })
 
 # A synthetic 3-class estimate with the classes deliberately OUT of canonical

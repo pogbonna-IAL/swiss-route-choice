@@ -30,18 +30,31 @@ ORCH_KEEP_RUNS <- 10L
 # "critical" does NOT fail the run. An inestimable model is a result, and a
 # pipeline that refuses to finish over one would be useless. It fails only on
 # "fail" (the script errored) and on reproduction drift.
+# `emitter` is the file that must still contain the pattern. A literal match
+# is fast and predictable, but it fails SILENTLY: reword a cat() and the
+# marker simply stops firing, the step reports ok, and the finding is lost --
+# which is the exact failure this whole layer exists to prevent.
+# tests/testthat/test-orchestrate.R asserts every pattern is still present in
+# its emitter, so a reworded message breaks a test instead of a report.
+#
+# Two markers were already dead when the guard was written: "!! WARNING" never
+# matched (05 prints "WARNING: rows with lr_ok"), and "no usable covariance
+# matrix" was removed from 05 and 06 when the verdict system replaced those
+# warning() calls. Both had been silently matching nothing.
+#
+# NA emitter means R itself prints it, not this project.
 ORCH_MARKERS <- tibble::tribble(
-  ~pattern,                       ~severity,   ~label,
-  "UNUSABLE",                     "critical",  "unusable model fit",
-  "NOT USABLE:",                  "critical",  "model not estimable",
-  "NOT ONE usable replication",   "critical",  "cell with no usable fit",
-  "renv is NOT active",           "critical",  "packages not from renv.lock",
-  "did not reproduce",            "critical",  "reproduction drift",
-  "!! WARNING",                   "warn",      "qualified result",
-  "is stale:",                    "warn",      "stale input table",
-  "no usable covariance matrix",  "warn",      "standard errors unavailable",
-  "Execution halted",             "fail",      "script error",
-  "Error in ",                    "fail",      "script error"
+  ~pattern,                          ~severity,   ~label,                          ~emitter,
+  "UNUSABLE",                        "critical",  "unusable model fit",            "R/lc_helpers.R",
+  "NOT USABLE:",                     "critical",  "model not estimable",           "R/05_lc_2class.R",
+  "NOT ONE usable replication",      "critical",  "cell with no usable fit",       "R/08_small_sample_experiment.R",
+  "renv is NOT active",              "critical",  "packages not from renv.lock",   "R/00_setup.R",
+  "did not reproduce",               "critical",  "reproduction drift",            "tests/testthat/test-reproduction.R",
+  "WARNING: rows with lr_ok",        "warn",      "LR test on a weak optimum",     "R/05_lc_2class.R",
+  "NOTE: rows with ratio_reliable",  "warn",      "uninterpretable WTP ratio",     "R/06_lc_multiclass.R",
+  "is stale:",                       "warn",      "stale input table",             "R/10_report.R",
+  "Execution halted",                "fail",      "script error",                  NA_character_,
+  "Error in ",                       "fail",      "script error",                  NA_character_
 )
 
 ORCH_SEVERITY_RANK <- c(info = 0L, warn = 1L, critical = 2L, fail = 3L)
