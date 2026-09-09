@@ -159,7 +159,8 @@ model_cov <- apollo_estimate(apollo_beta, apollo_fixed,
                              apollo_probabilities, apollo_inputs)
 apollo_modelOutput(model_cov)
 
-saveRDS(model_cov, file.path(PATH_MODELS, paste0(MODEL_NAME, "_model.rds")))
+saveRDS(scrub_local_paths(model_cov),
+        file.path(PATH_MODELS, paste0(MODEL_NAME, "_model.rds")))
 writeLines(capture.output(apollo_modelOutput(model_cov)),
            file.path(PATH_MODELS, paste0(MODEL_NAME, "_output.txt")))
 

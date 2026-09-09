@@ -116,7 +116,9 @@ apollo_modelOutput(model_mnl)
 # to _OLD1, _OLD2, ... on every re-run, so a few re-estimations leave the model
 # directory full of stale copies that no script reads and nothing cleans up.
 # 06 already avoided it; this script was the last one still generating them.
-saveRDS(model_mnl, MODEL_RDS)
+# scrub_local_paths: Apollo embeds the estimating machine's absolute output
+# directory in three places, and this file is committed. See 00_setup.R.
+saveRDS(scrub_local_paths(model_mnl), MODEL_RDS)
 writeLines(capture.output(apollo_modelOutput(model_mnl)),
            file.path(PATH_MODELS, paste0(MODEL_NAME, "_output.txt")))
 
