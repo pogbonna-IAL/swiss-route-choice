@@ -27,6 +27,7 @@ R/
   10_report.R         assembles the report from outputs/tables
   build_docs.R        bundles docs/ into one markdown file
   run_all.R           the real run order
+  orchestrate.R       run records, marker scanning, notifications
 tests/
   run_tests.R         entry point
   testthat/           assertions on the pure helpers (six files)

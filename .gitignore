@@ -33,6 +33,11 @@ renv/sandbox/
 #
 # Everything below is regenerated in seconds to minutes from the above.
 outputs/logs/
+
+# Run records: per-run logs, run.json and summary.md, written by orchestrate.R.
+# Diagnostic history rather than results -- every number they describe is
+# reproducible from the pipeline -- and the last 10 are kept automatically.
+outputs/runs/
 outputs/report.md
 outputs/documentation.md
 outputs/session_info.txt

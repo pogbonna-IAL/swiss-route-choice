@@ -119,11 +119,47 @@ is reviewable.
 
 ```sh
 Rscript R/run_all.R              # everything, in dependency order
-Rscript R/run_all.R --list       # the plan and rough runtimes, then exit
+Rscript R/run_all.R --list       # the plan, then exit
+Rscript R/run_all.R --resume     # restart at the first step that did not finish
 Rscript R/run_all.R --from 06    # 06 and everything after it
 Rscript R/run_all.R 02 06 05     # just those, still in dependency order
 REFIT=1 Rscript R/run_all.R      # ignore every cache, re-estimate everything
 Rscript tests/run_tests.R        # test suite + reproduction check
+```
+
+### What a run tells you
+
+`run_all.R` opens with a **pre-flight**: which steps will hit cache, which will
+re-estimate, and how long it will take &mdash; taken from what each step
+actually took last time, not from a guess. Then, per step:
+
+```
+[05] 05_lc_2class.R -- covariate class allocation, K = 2..4
+     done in 0.16 min   !! 3 critical
+     -> unusable model fit (x2), log line 134
+     -> model not estimable (x1), log line 336
+```
+
+The scripts have always printed those findings into their own logs. Nothing
+read them back, so the summary line said `ok` for a step that had just declared
+two models inestimable. The orchestrator now scans each log for known markers
+and surfaces them with a line number.
+
+**Critical findings do not fail the run.** `LCcov3` being inestimable is a
+*result*; a pipeline that refused to finish over one would be unusable. The one
+thing that does fail the run, with a non-zero exit code, is **reproduction
+drift** &mdash; the pipeline no longer producing the numbers this repository
+claims it produces.
+
+Every run writes `outputs/runs/<timestamp>/` containing per-step logs (each
+stamped with start, finish and exit code), a machine-readable `run.json`, and a
+`summary.md`. The last ten are kept.
+
+Notifications are opt-in and off by default:
+
+```sh
+NOTIFY_DESKTOP=1 Rscript R/run_all.R                    # toast when it ends
+NOTIFY_WEBHOOK=https://hooks.slack.com/... Rscript R/run_all.R
 ```
 
 Each script runs in its **own R process**. Apollo keeps its model definition in
