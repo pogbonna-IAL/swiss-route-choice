@@ -26,11 +26,12 @@ R/
   11_breakdown.R      where latent class estimation stops working
   10_report.R         assembles the report from outputs/tables
   build_docs.R        bundles docs/ into one markdown file
+  build_reference.R   freezes the headline results as a reproduction target
   run_all.R           the real run order
   orchestrate.R       run records, marker scanning, notifications
 tests/
   run_tests.R         entry point
-  testthat/           assertions on the pure helpers (six files)
+  testthat/           221 assertions across nine files
 docs/                 this documentation
 outputs/
   models/ figures/ tables/ logs/
@@ -39,13 +40,15 @@ outputs/
   session_info.txt    package versions for the last full run
 ```
 
-Three shared files, each with one job:
+Four shared files, each with one job:
 
 - **`00_setup.R`** — everything every script needs: paths, `SEED`, `FULL_N`,
   `ROUTE_ATTRS`, `MODEL_COVARS`, `write_table()`, `cached_model()`.
 - **`lc_helpers.R`** — everything latent-class-specific. Sourced by `05`, `06`
   and `08`.
 - **`model_helpers.R`** — validation machinery. Sourced by `02`, `03` and `04`.
+- **`orchestrate.R`** — what happens *around* each step: run records, log
+  marker scanning, notifications. Sourced by `run_all.R`.
 
 ---
 
@@ -138,6 +141,7 @@ The three long scripts each cache completed work and resume:
 | `04` | one model | `cached_model()` → `Swiss_MXL_*_model.rds` |
 | `05` | one $K$ | `lc_fit_cached()` → `_model.rds` + `_runs.rds` |
 | `06` | one $K$ | `lc_fit_cached()` → `_model.rds` + `_runs.rds` |
+| `09` | the design | `resume_enabled()` → `idefix_design_D.rds` |
 | `08` | one $(n, \text{seed}, K)$ | append to CSV, `anti_join` on restart |
 
 ```r
@@ -253,7 +257,7 @@ mask is a confusing failure.
 
 ## 7.8 Testing
 
-`tests/run_tests.R` runs 183 assertions across six files. They cover the
+`tests/run_tests.R` runs 221 assertions across nine files. They cover the
 **pure helpers only** and deliberately estimate nothing — a suite that takes an
 hour is a suite nobody runs.
 
@@ -265,6 +269,9 @@ hour is a suite nobody runs.
 | `test-lc-codegen.R` | Generated source contains the right parameters; $K=1$ guards |
 | `test-model-helpers.R` | Split is on respondent; scoring identities; overflow and underflow; draws are all used |
 | `test-setup-constants.R` | `FULL_N` matches the data; covariates exist as columns; naming conventions |
+| `test-reproduction.R` | Twenty headline quantities match `tests/reference/expected_results.csv`; the 1,044-fit ledger is intact |
+| `test-no-local-paths.R` | No committed model cache carries this machine's project path |
+| `test-orchestrate.R` | Every log marker is still emitted by the file that should emit it; the scanner counts rather than lists |
 
 Estimation itself is checked **inside the scripts** by the assertions listed in
 [Validation §4.4](04-validation.md#44-assertions-in-the-pipeline), because
@@ -290,24 +297,86 @@ matters.
 
 ```sh
 Rscript R/run_all.R              # everything, in dependency order
-Rscript R/run_all.R --list       # the plan and rough runtimes, then exit
+Rscript R/run_all.R --list       # the plan, then exit
+Rscript R/run_all.R --resume     # restart at the first step that did not finish
 Rscript R/run_all.R --from 06    # 06 and everything after it
 Rscript R/run_all.R 02 06 05     # just those, still in dependency order
 REFIT=1 Rscript R/run_all.R      # ignore every cache, re-estimate everything
 Rscript tests/run_tests.R        # helper suite
 ```
 
-Approximate runtimes on a modest laptop:
+The expensive fits are **committed**, so these are the costs a clone actually
+pays:
 
-| Step | Minutes | Notes |
+| Scenario | Time | What happens |
 |---|---|---|
-| 01, 02, 03 | ~2 | |
-| 04 | ~20 | 200 MLHS draws, two models plus a training-half fit |
-| 06 | ~45 | 5 models × 50 starts |
-| 05 | ~30 | 3 models × 30 starts |
-| 08 | ~240 | 485 fits; resumes from CSV |
-| 07, 09, 10 | ~6 | |
+| Fresh clone | **~3-4 min** | Every model and the design load from cache |
+| After deleting `outputs/models/` | ~100 min | 04 (20), 06 (45), 05 (30), 09 (5) re-estimate; 08 resumes from its committed CSVs |
+| `REFIT=1` | ~6 hours | Everything from scratch, including all 1,044 fits in 08 |
 
-`run_all.R` writes per-script logs to `outputs/logs/`, prints the last 25 lines
-of the log on failure, and calls `save_session_info()` at the end so a
-completed run records the package versions that produced it.
+Nominal per-step costs, for the middle row: 04 ~20 min (200 MLHS draws, two
+models plus a training-half fit), 06 ~45 (5 models × 50 starts), 05 ~30
+(3 models × 30 starts), 09 ~5, 08 ~240 for 1,044 fits from nothing, everything
+else under a minute.
+
+Pre-flight prints the estimate before the run starts, taken from what each
+step actually took last time rather than from this table.
+
+---
+
+## 7.10 The orchestration layer
+
+`run_all.R` decides what runs and in what order. `orchestrate.R` decides what
+happens around each step.
+
+It exists because the orchestrator used to report *process* success and call it
+done. Step 05 printed two `UNUSABLE` banners -- `LCcov3` and `LCcov4` have
+singular Hessians on the full panel, every standard error `NA` -- into its own
+log, and the summary line said `ok`. The scripts already said the right things;
+nothing read them back. That is the same "converged is not usable" confusion
+the fit-level verdict fixed inside the scripts, recurring one level up.
+
+**Marker scanning.** After each step, its log is scanned for literal strings
+the scripts are known to print, and hits are surfaced as counts with a line
+number:
+
+```
+[05] 05_lc_2class.R -- covariate class allocation, K = 2..4
+     done in 0.16 min   !! 3 critical  ~ 1 warning
+     -> unusable model fit (x2), log line 134
+     -> model not estimable (x1), log line 336
+```
+
+Literal matching is fast and predictable and **fails silently**: reword a
+`cat()` and the marker stops firing, the step reports `ok`, and the finding is
+lost exactly as before. So `ORCH_MARKERS` records which file must emit each
+pattern and `test-orchestrate.R` asserts it is still there. Writing that guard
+immediately found two markers that had never matched anything.
+
+**Severity policy.** Critical findings do **not** fail the run. An inestimable
+model is a result, and a pipeline that refused to finish over one would be
+unusable. The one thing that fails, with a non-zero exit code, is reproduction
+drift -- the pipeline no longer producing the numbers this repository claims.
+
+**Run records.** Each run writes `outputs/runs/<timestamp>/`: per-step logs
+stamped with start, finish and exit code; a machine-readable `run.json`; and a
+`summary.md`. The last ten are kept. `--resume` reads the latest record and
+restarts at the first step that did not finish.
+
+**Pre-flight.** Before anything runs: renv sync, which steps hit cache, and how
+long it will take -- from measured times where a previous run recorded them. An
+early version resolved cache artefacts only against `outputs/models/`, so 08
+(which resumes from CSVs) looked uncached and drew a 240-minute estimate onto a
+12-second step. An estimate that cries wolf gets ignored, and then it is not an
+estimate.
+
+**Notifications** are opt-in, so a clone behaves exactly as before:
+
+```sh
+NOTIFY_DESKTOP=1 Rscript R/run_all.R
+NOTIFY_WEBHOOK=https://hooks.slack.com/... Rscript R/run_all.R
+```
+
+On failure the runner prints the *error* lines rather than the last 25 lines of
+log, which were usually Apollo's startup banner. `save_session_info()` records
+the package versions that produced the run.

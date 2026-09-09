@@ -16,7 +16,7 @@ a specification, change the file here that describes it.
 | 4 | [Validation](04-validation.md) | Hold-out design, scoring, the independent cross-check, the small-sample experiment |
 | 5 | [Experimental design](05-experimental-design.md) | Bayesian D-efficiency, modified Fedorov, prior propagation |
 | 6 | [Numerical methods](06-numerical-methods.md) | Overflow, underflow, log-sum-exp, and four traps that fail silently |
-| 7 | [Architecture](07-architecture.md) | File map, dependency graph, caching, process isolation |
+| 7 | [Architecture](07-architecture.md) | File map, dependency graph, caching, process isolation, the orchestration layer |
 | 8 | [**What broke**](08-what-broke.md) | Pushing the latent class models to N = 5: what did and did not reproduce |
 
 If you only read one thing, read [What broke](08-what-broke.md): 1,044 fits,
@@ -52,8 +52,14 @@ coefficients. `03` lets them vary with observed characteristics, `04` lets
 them vary continuously in ways nothing observed explains, and `05`/`06` let
 them vary in discrete classes. On this data the continuous specification wins
 decisively (BIC 2923 against the baseline's 3364, and it is the only
-alternative that also wins out of sample). The more important result is in
-`07`/`08`: below roughly 150 respondents, latent class models start returning
-wrong-signed coefficients and BIC starts under-selecting the number of
-classes, so most of the structure those models find at $N = 388$ is not
-recoverable from a smaller study.
+alternative that also wins out of sample).
+
+The more important result is in `07`, `08` and `11`. Across 1,044 fits at
+sample sizes from 250 respondents down to 5, **every single one converged and
+fewer than half were usable.** The first thing to fail is not convergence,
+not the standard errors and not the signs — it is class identity, and it goes
+at $N = 250$, where every conventional diagnostic still reads green. At that
+same size a two-class model's nominal 95% intervals contain the full-panel
+value 54% of the time, where the MNL's contain it 95% of the time, and nothing
+in the ordinary output distinguishes them. See
+[What broke](08-what-broke.md).

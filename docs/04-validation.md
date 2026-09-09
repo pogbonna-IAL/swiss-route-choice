@@ -188,15 +188,26 @@ hold-out penalises them by whether they help.
 
 ## 4.5 The small-sample experiment
 
-`08_small_sample_experiment.R` is the largest computation in the project — 485
-model fits — and answers the question the rest of the analysis provokes: **how
-much of this survives a smaller study?**
+`08_small_sample_experiment.R` is the largest computation in the project —
+**1,044 model fits** — and answers the question the rest of the analysis
+provokes: **how much of this survives a smaller study?**
+
+It runs in two regimes. The upper block is the plausible-study range; the lower
+block is deliberately past the point of usefulness, to locate where latent
+class estimation stops working rather than merely getting noisy. What it found
+there has its own document: [What broke](08-what-broke.md).
 
 ### Design
 
-- **Sample sizes** 250, 150, 100, 75, 50, 30 respondents; **20 seeds** each.
-- **Models** MNL, LC2, LC3, LC4 in every replication.
+- **Sample sizes** 250, 150, 100, 75, 50, 30 (the plausible range) and 25, 20,
+  15, 12, 10, 8, 5 (past it); **20 seeds** each.
+- **Models** MNL, LC2, LC3, LC4 in every replication — 13 sizes × 20 seeds x
+  4 models, plus the four benchmark fits.
 - **Sampling is on ID**, so a drawn respondent keeps all nine tasks.
+- **The samples are nested.** For a given seed, `sample(ids, 5)` is the first
+  five elements of `sample(ids, 250)`, so shrinking n removes respondents from
+  a fixed ordering rather than drawing an unrelated group. "Where does it
+  break" is therefore a question about the same people, progressively fewer.
 - **$N = 388$ is not a sampled cell.** Drawing 388 from 388 returns the whole
   panel for every seed. It is estimated once, with seed 0, as the benchmark
   that bias and coverage are measured against.
@@ -270,6 +281,12 @@ Reading a single "convergence rate" across both would be meaningless. The rows
 are labelled by `source`, carry their own verdict scale ("20 starts enough" /
 "50+ starts" / "100+ starts" rather than "Yes" / "No"), and columns that do not
 apply print `--` instead of a number that invites a false comparison.
+
+`07` is also **scoped to n >= 30** (`MIN_N`). Below that every answer is the
+same answer — 24 of 57 rows read "meaningless" once the grid was extended to
+n = 5 — which tells a reader nothing and buries the range where the verdict
+scale actually discriminates. `11_breakdown.R` owns the tail and asks a
+different question of it: not "is this trustworthy" but "how does it fail".
 
 The table also flags $K = 5$ as having **no resampling counterpart**: `06`
 sweeps five classes while `08` covers four, so that row rests on
