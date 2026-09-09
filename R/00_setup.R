@@ -205,6 +205,56 @@ show_table <- function(x, digits = 3) {
 # every cache and re-estimate from scratch.
 resume_enabled <- function() !identical(Sys.getenv("REFIT"), "1")
 
+# Apollo stores the whole apollo_control list inside the fitted model, and
+# that includes outputDirectory -- an ABSOLUTE path on the machine that ran
+# the estimation. The cached .rds files are committed, so without this the
+# repository publishes a local directory tree, and every cached object points
+# at a path that exists on exactly one computer. Nothing here reads the field
+# back, so it is replaced with the relative location it always means.
+# Apollo records the absolute output path in THREE places inside a fitted
+# model: apollo_control$outputDirectory, bgw_settings$outputDirectory, and a
+# second nested copy at estimate_settings$bgw_settings$outputDirectory. The
+# cached .rds files are committed, so without this the repository publishes a
+# local directory tree and every cached object points at a path that exists on
+# exactly one computer.
+#
+# Named explicitly rather than by a recursive walk. A walk was tried first and
+# silently missed the nested copy, which is exactly the failure mode that makes
+# clever traversal code worse than a list you can read.
+LOCAL_PATH_FIELDS <- list(
+  c("apollo_control", "outputDirectory"),
+  c("bgw_settings", "outputDirectory"),
+  c("estimate_settings", "bgw_settings", "outputDirectory")
+)
+
+scrub_local_paths <- function(model, rel = "outputs/models/") {
+  for (path in LOCAL_PATH_FIELDS) {
+    cur <- tryCatch(model[[path]], error = function(e) NULL)
+    if (!is.null(cur) && is.character(cur)) model[[path]] <- rel
+  }
+  model
+}
+
+# Does a serialised object contain THIS machine's project root anywhere?
+#
+# Checks the raw bytes, so it sees into nested lists and the environments that
+# saved closures carry -- the places a structural walk does not reach, and the
+# reason the three fields above were found one at a time rather than all at
+# once.
+#
+# It looks for the actual root string, NOT a generic drive-letter pattern. An
+# earlier version used "[A-Za-z]:[/\]" and reported nine clean files as
+# dirty: in a stream of concatenated printable bytes that pattern matches
+# things like "v:/?Bc4NFuVu}xtK" by coincidence. A test that cries wolf on
+# binary noise is worse than no test.
+has_local_path <- function(x, root = normalizePath(here::here(), winslash = "/",
+                                                   mustWork = FALSE)) {
+  b   <- serialize(x, NULL)
+  txt <- rawToChar(b[b >= as.raw(32) & b <= as.raw(126)])
+  grepl(root, txt, fixed = TRUE) ||
+    grepl(gsub("/", "\\", root, fixed = TRUE), txt, fixed = TRUE)
+}
+
 # Caches one fitted model. `key` is the basename under outputs/models/.
 cached_model <- function(key, fit_fn, resume = resume_enabled()) {
   path <- file.path(PATH_MODELS, paste0(key, "_model.rds"))
@@ -216,7 +266,7 @@ cached_model <- function(key, fit_fn, resume = resume_enabled()) {
     return(m)
   }
   m <- fit_fn()
-  saveRDS(m, path)
+  saveRDS(scrub_local_paths(m), path)
   m
 }
 

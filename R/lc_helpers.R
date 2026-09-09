@@ -645,7 +645,9 @@ lc_fit_cached <- function(key, fit_fn, resume = TRUE) {
 
   fit <- fit_fn()
   if (isTRUE(fit$ok)) {
-    saveRDS(fit$model,   model_path)
+    # scrub_local_paths: the cached models are committed, and Apollo embeds an
+    # absolute outputDirectory in every one. See 00_setup.R.
+    saveRDS(scrub_local_paths(fit$model), model_path)
     saveRDS(fit$run_log, runs_path)
   }
   fit
