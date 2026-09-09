@@ -1,0 +1,51 @@
+# renv keeps the package library on disk; renv.lock is what gets committed.
+renv/library/
+renv/local/
+renv/cellar/
+renv/staging/
+renv/python/
+renv/sandbox/
+
+# R session state. .Rprofile IS committed -- it activates renv.
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj.user
+
+# --- Generated outputs -------------------------------------------------------
+# The rule is: track what is EXPENSIVE to reproduce and cheap to store; ignore
+# what is cheap to reproduce. A newcomer should be able to clone and get a
+# working pipeline in minutes, not spend two hours re-deriving artifacts that
+# have not changed.
+#
+# What is tracked, and why:
+#
+#   outputs/tables/08_fits.csv        1,044 model fits -- hours of estimation
+#   outputs/tables/08_parameters.csv  the estimates behind them
+#   outputs/models/*_model.rds        fitted models: 04, 05, 06 resume from these
+#   outputs/models/*_runs.rds         their per-start logs (required alongside)
+#   outputs/figures/                  so the README and docs render on GitHub
+#
+# Together those are under 3 MB and save roughly 95 minutes on a first run.
+# An earlier version of this file excluded them on the stated grounds that
+# "the model objects run to hundreds of megabytes" -- that was asserted rather
+# than measured, and it is wrong: outputs/models/ is 911 KB.
+#
+# Everything below is regenerated in seconds to minutes from the above.
+outputs/logs/
+outputs/report.md
+outputs/documentation.md
+outputs/session_info.txt
+
+# Apollo scratch: rewritten on every estimation, read by nothing.
+outputs/models/*_iterations.csv
+outputs/models/*_output.txt
+
+# Derived tables. 08's two are the exception above; the rest are rebuilt by
+# their own script in well under a minute.
+outputs/tables/*
+!outputs/tables/08_fits.csv
+!outputs/tables/08_parameters.csv
+
+.DS_Store
+Thumbs.db

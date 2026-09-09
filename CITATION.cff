@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+title: "Swiss route choice: modelling taste heterogeneity and its small-sample limits"
+message: "If you use this code or its findings, please cite it as below."
+type: software
+authors:
+  - alias: pogbonna-IAL
+    email: pogbonna@gmail.com
+repository-code: "https://github.com/pogbonna-IAL/swiss-route-choice"
+license: MIT
+abstract: >-
+  Four specifications of taste heterogeneity in a stated-preference route
+  choice panel -- a baseline multinomial logit, covariate-interacted
+  coefficients, a correlated mixed logit with negative lognormal parameters,
+  and latent class models with constant and covariate-driven allocation --
+  fitted to identical data so their likelihoods are comparable. A resampling
+  experiment then refits every model at sample sizes from 250 respondents down
+  to 5, twenty draws each, to establish where latent class estimation stops
+  being reproducible. Across 1,044 fits, every one converged and fewer than
+  half were usable; class identity is the first thing to fail, at 250
+  respondents, where every conventional diagnostic still reads green.
+keywords:
+  - discrete choice
+  - mixed logit
+  - latent class
+  - taste heterogeneity
+  - reproducibility
+  - small sample
+  - apollo
+references:
+  - type: software
+    title: "Apollo: a flexible, powerful and customisable freeware package for choice model estimation and application"
+    authors:
+      - family-names: Hess
+        given-names: Stephane
+      - family-names: Palma
+        given-names: David
+    year: 2019
+    doi: 10.1016/j.jocm.2019.100170
+    notes: >-
+      Supplies both the estimation engine and the
+      apollo_swissRouteChoiceData dataset used throughout.

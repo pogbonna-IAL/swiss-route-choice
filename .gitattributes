@@ -1,0 +1,20 @@
+# Normalise line endings so the repo is identical on Windows, macOS and Linux.
+# Without this, a Windows clone rewrites every text file to CRLF and a later
+# diff on another platform shows every line as changed -- which makes the
+# reference-results diff, the one thing meant to be reviewable, unreadable.
+* text=auto eol=lf
+
+# Binary. Never touch these: an .rds rewritten with CRLF is a corrupt .rds,
+# and these carry the cached model fits a clone depends on.
+*.rds  binary
+*.png  binary
+*.pdf  binary
+
+# Generated data. Marking it linguist-generated keeps GitHub from counting it
+# as source and from showing 700 KB of numbers in a pull request diff.
+outputs/tables/08_fits.csv        linguist-generated=true
+outputs/tables/08_parameters.csv  linguist-generated=true
+
+# The reference results ARE meant to be read in a diff -- a change here is a
+# deliberate change to what the pipeline should produce.
+tests/reference/expected_results.csv  -linguist-generated
