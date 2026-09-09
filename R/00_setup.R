@@ -15,6 +15,25 @@
 # search path of a script that only estimates a model.
 # ---------------------------------------------------------------------------
 
+# --- Is the pinned library actually in use? ---------------------------------
+# If renv fails to activate -- a failed bootstrap, a path too long for
+# Windows, .Rprofile not sourced because R was started with --vanilla -- then
+# every library() call below silently resolves against whatever the user
+# happens to have installed. The scripts still run. The tests still pass. The
+# numbers are no longer produced by the pinned environment and nothing says
+# so, which is the worst possible failure for a replication package.
+local({
+  active <- !is.na(Sys.getenv("RENV_PROJECT", unset = NA))
+  if (!active) {
+    warning(paste0(
+      "renv is NOT active: packages are resolving against your personal
+      library, not the versions pinned in renv.lock. Results may differ.
+      Start R from the project root so .Rprofile runs, and check that
+      renv::status() reports a synchronised library."),
+      call. = FALSE, immediate. = TRUE)
+  }
+})
+
 # --- Environment check ------------------------------------------------------
 # renv.lock pins R 4.4.1. renv restores the PACKAGES but cannot change the R
 # version, and a mismatch surfaces much later as a confusing package error --
